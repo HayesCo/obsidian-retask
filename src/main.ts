@@ -1,4 +1,4 @@
-import { Plugin } from 'obsidian';
+import { MarkdownView, Notice, Plugin } from 'obsidian';
 
 import { Cache } from './Obsidian/Cache';
 import { Commands } from './Commands';
@@ -17,6 +17,7 @@ import { StatusSettings } from './Config/StatusSettings';
 import type { Task } from './Task/Task';
 import { tasksApiV1 } from './Api';
 import { GlobalFilter } from './Config/GlobalFilter';
+import { ReTask } from 'ReTask';
 
 export default class TasksPlugin extends Plugin {
     private cache: Cache | undefined;
@@ -32,6 +33,50 @@ export default class TasksPlugin extends Plugin {
         log('info', `loading plugin "${this.manifest.name}" v${this.manifest.version}`);
 
         await this.loadSettings();
+
+        // This creates an icon in the left ribbon.
+        this.addRibbonIcon('chevron-right-square', 'ReTask Today', () => {
+            // Called when the user clicks the icon.
+            // new Notice('ReTask Today Toggled');
+            ReTask.today();
+            // console.log(app.workspace.activeEditor?.file?.path);
+            // alert('This is an alert!');
+        });
+
+        // This adds a complex command that can check whether the current state of the app allows execution of the command
+        this.addCommand({
+            id: 'run-retask-command-complex',
+            name: 'Run ReTask Command (complex)',
+            hotkeys: [
+                {
+                    modifiers: ['Meta', 'Shift'],
+                    key: 'r',
+                },
+            ],
+            checkCallback: (checking: boolean) => {
+                // Conditions to check
+                const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+                if (markdownView) {
+                    console.log('checking status:');
+                    console.log(checking);
+                    console.log('custom command check just ran');
+                    // new Notice('custom command check just ran');
+                    // If checking is true, we're simply "checking" if the command can be run.
+                    // If checking is false, then we want to actually perform the operation.
+                    if (!checking) {
+                        console.log('custom retask code block just ran');
+                        // new Notice('custom retask code block check just ran');
+                    }
+
+                    console.log('running retask class function here:');
+                    ReTask.today();
+
+                    // This command will only show up in Command Palette when the check function returns true
+
+                    return true;
+                }
+            },
+        });
 
         // Configure logging.
         const { loggingOptions } = getSettings();
