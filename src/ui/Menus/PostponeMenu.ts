@@ -45,6 +45,13 @@ export class PostponeMenu extends TaskEditingMenu {
             );
         };
 
+        // const fixedTitle = fixedDateMenuItemTitle;
+        // const fixedDateFunction = createFixedDateTask;
+        // this.addItem((item) => postponeMenuItemCallback(button, item, 'days', 0, fixedTitle, fixedDateFunction));
+        // this.addItem((item) => postponeMenuItemCallback(button, item, 'day', 1, fixedTitle, fixedDateFunction));
+
+        // this.addSeparator();
+
         // RETASK: Updated Section
         const titlingFunction = postponeMenuItemTitle;
         const postponingFunction = createPostponedTask;
