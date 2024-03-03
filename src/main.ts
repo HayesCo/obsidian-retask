@@ -1,5 +1,6 @@
-import { MarkdownView, Notice, Plugin } from 'obsidian';
+import { MarkdownView, Plugin } from 'obsidian';
 
+import { ReTask } from 'ReTask';
 import { Cache } from './Obsidian/Cache';
 import { Commands } from './Commands';
 import { GlobalQuery } from './Config/GlobalQuery';
@@ -17,7 +18,6 @@ import { StatusSettings } from './Config/StatusSettings';
 import type { Task } from './Task/Task';
 import { tasksApiV1 } from './Api';
 import { GlobalFilter } from './Config/GlobalFilter';
-import { ReTask } from 'ReTask';
 
 export default class TasksPlugin extends Plugin {
     private cache: Cache | undefined;
@@ -44,6 +44,7 @@ export default class TasksPlugin extends Plugin {
         });
 
         // This adds a complex command that can check whether the current state of the app allows execution of the command
+        // May not need the "complex command"
         this.addCommand({
             id: 'run-retask-command-complex',
             name: 'Run ReTask Command (complex)',

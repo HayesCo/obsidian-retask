@@ -1,6 +1,9 @@
 import moment from 'moment'; //RETASK: ADDED
 import type { Task } from 'Task/Task';
 import type { unitOfTime } from 'moment/moment';
+import { getTaskLineAndFile } from 'Obsidian/File';
+
+import { setTimeout } from 'timers/promises';
 
 export class ReTask {
     public static async retask() {
@@ -21,7 +24,6 @@ export class ReTask {
         const todayDateString = this.dateToYYYYMMDD(currentFileDate);
 
         const todayReTask = [
-            '<= ReTaskToday =>',
             '```tasks',
             'not done',
             'scheduled on ' + todayDateString,
@@ -33,25 +35,14 @@ export class ReTask {
 
         // MAKE ARRAY FROM SOURCE FILE and splice the task out of it
         const sourceFileArray = await this.makeSourceFileArray(openFilePath);
-        const markerString = '<= ReTaskToday =>';
+        const retaskLocation = this.arraySubArrayFind(sourceFileArray, todayReTask);
 
-        const lastloc = sourceFileArray?.lastIndexOf(markerString);
-
-        // LOGIC: if lastloc =-1 then not found so we just append line to destfile otherwise we use lastloc + 1
-        // we want to input at the end of the file or on top of the retask marker string
-        console.log('printing lastloc');
-        console.log(lastloc);
-
-        if (lastloc == -1) {
+        if (retaskLocation == -1) {
             // this means we need to add the tasks string
             sourceFileArray.unshift(todayReTask.join('\n'));
-        } else if (lastloc == 0) {
-            // this means we need to remove the tasks string
-            sourceFileArray.splice(0, todayReTask.length);
         } else {
-            alert('ReTask Today marker not at the beginning of the file. Fix that for this to work.');
-            console.log('unexpected lastloc');
-            return;
+            // this means we need to remove the tasks string
+            sourceFileArray.splice(retaskLocation as number, todayReTask.length);
         }
 
         await app.vault.adapter.write(openFilePath, sourceFileArray.join('\n'));
@@ -66,8 +57,20 @@ export class ReTask {
         const sourceFileArray = await this.makeSourceFileArray(task.taskLocation.path);
         sourceFileArray.splice(task.taskLocation.lineNumber, 1);
 
-        // IF THIS IS TRUE WE ARE USING THE SAME FILE FOR SOURCE AND DESTINATION SO SOMETHING IS WRONG
-        if (task.taskLocation.path == openFilePath) return;
+        // IF THIS IS TRUE WE ARE USING THE SAME FILE FOR SOURCE AND DESTINATION SO FOCUS ON LINE
+        if (task.taskLocation.path == openFilePath) {
+            const result = await getTaskLineAndFile(task, app.vault);
+            if (result) {
+                const [line, file] = result;
+                const leaf = app.workspace.getLeaf();
+                // When the corresponding task has been found,
+                // suppress the default behavior of the mouse click event
+                // (which would interfere e.g. if the query is rendered inside a callout).
+                // Instead of the default behavior, open the file with the required line highlighted.
+                await leaf.openFile(file, { eState: { line: line } });
+            }
+            return;
+        }
 
         // determine destination file. if the currently open file is today or the future then pen moves task to currently open file.
         // if the currently open file is in the past, then pen moves the task to "today"
@@ -88,10 +91,9 @@ export class ReTask {
             pathToUse = openFilePath;
         }
 
-        const destinationFileArray = await this.makeSourceFileArray(pathToUse);
-        this.spliceTaskIntoFileArray(destinationFileArray, task);
+        const destinationFileArray = await this.spliceTaskIntoFileArray(pathToUse, task);
 
-        await app.vault.adapter.write(pathToUse, destinationFileArray.join('\n'));
+        await app.vault.adapter.write(pathToUse, destinationFileArray!.join('\n'));
         await app.vault.adapter.write(task.taskLocation.path, sourceFileArray.join('\n'));
     }
 
@@ -127,12 +129,8 @@ export class ReTask {
         const targetPathString = this.dateToNotePath(targetDate);
 
         // MAKE ARRAY OUT OF DESTINATION FILE and make path if file doesn't exist. fill new file with template.
-        let destinationFileArray: any = [];
-
         if (!(await app.vault.adapter.exists(targetPathString))) await this.createAndPopulateNote(targetDate);
-        destinationFileArray = await this.makeSourceFileArray(targetPathString);
-
-        this.spliceTaskIntoFileArray(destinationFileArray, task);
+        const destinationFileArray = await this.spliceTaskIntoFileArray(targetPathString, task);
 
         await app.vault.adapter.write(targetPathString, destinationFileArray.join('\n'));
         await app.vault.adapter.write(task.taskLocation.path, sourceFileArray.join('\n'));
@@ -168,13 +166,10 @@ export class ReTask {
         // periodic-notes/2024/2024-01/2024-01-08.md
         const targetPathString = this.dateToNotePath(targetDate);
 
-        // MAKE ARRAY OUT OF DESTINATION FILE
-        let destinationFileArray: any = [];
-
+        // MAKE ARRAY OUT OF DESTINATION FILE and make path if file doesn't exist. fill new file with template.
         if (!(await app.vault.adapter.exists(targetPathString))) await this.createAndPopulateNote(targetDate);
-        destinationFileArray = await this.makeSourceFileArray(targetPathString);
 
-        this.spliceTaskIntoFileArray(destinationFileArray, task);
+        const destinationFileArray = await this.spliceTaskIntoFileArray(targetPathString, task);
 
         await app.vault.adapter.write(targetPathString, destinationFileArray.join('\n'));
         await app.vault.adapter.write(task.taskLocation.path, taskSourceFileArray.join('\n'));
@@ -232,6 +227,10 @@ export class ReTask {
     }
 
     private static async createAndPopulateNote(date: Date) {
+        const yyyymmdd = this.dateToYYYYMMDD(date);
+        // paragraph.replace("Ruth's", 'my');
+        // beasts.indexOf('bison')
+
         const todayYearFolderPathString = this.dateToYearFolderPath(date);
         const todayMonthFolderPathString = this.dateToMonthFolderPath(date);
 
@@ -249,17 +248,91 @@ export class ReTask {
             '<% tp.file.cursor() %><%* app.workspace.activeLeaf.view.editor?.focus(); %>',
             '',
         );
-        await app.vault.create(this.dateToNotePath(date), dailyTemplate);
+
+        const updatedDailyTemplate = dailyTemplate.replace(
+            '<% tp.date.now("YYYY-MM-DD", 0, tp.file.title, "YYYY-MM-DD") %>',
+            yyyymmdd,
+        );
+
+        await app.vault.create(this.dateToNotePath(date), updatedDailyTemplate);
     }
 
-    private static spliceTaskIntoFileArray(destinationFileArray: string[], task: Task) {
+    private static async spliceTaskIntoFileArray(destinationPath: string, task: Task) {
+        const destinationFileArray = await this.makeSourceFileArray(destinationPath);
+
+        const pathParts = destinationPath.split('/');
+        const filename = pathParts.pop();
+        const fileParts = filename!.split('.md');
+        const basename = fileParts.shift();
+
+        const destinationFileDate = new Date(Date.parse(basename + ' 00:00:00'));
+        // below makes a string similar to this > 2024-01-08
+        const fileDateString = this.dateToYYYYMMDD(destinationFileDate);
+
+        const taskQueryString = [
+            '```tasks',
+            'not done',
+            'scheduled before ' + fileDateString,
+            'group by scheduled reverse',
+            'short',
+            '```',
+        ];
+
         // DETERMINE RETASK INPUT LOCATION IN DESTINATION FILE
         const markerString = '<= retask =>';
-        let lastloc = destinationFileArray?.lastIndexOf(markerString);
+        const markerStringLocation = destinationFileArray?.lastIndexOf(markerString);
+        const taskQueryStringLocation = this.arraySubArrayFind(destinationFileArray, taskQueryString);
 
-        // LOGIC: if lastloc =-1 then not found so we just append line to destfile otherwise we use lastloc + 1
-        // we want to input at the end of the file or on top of the retask marker string
-        if (lastloc == -1) lastloc = destinationFileArray.length;
-        destinationFileArray.splice(lastloc, 0, task.originalMarkdown);
+        // line number to put task in destination file
+        let retaskLocation = null;
+
+        if (markerStringLocation != -1) {
+            // if marker string is found, put the task there
+            retaskLocation = markerStringLocation;
+        } else if (taskQueryStringLocation != -1) {
+            // if marker string is not found BUT tasks query string IS found, then task should go one line before tasks string
+            retaskLocation = (taskQueryStringLocation as number) - 1;
+
+            // put an empty line above tasks query if its not there
+            if (destinationFileArray[(taskQueryStringLocation as number) - 1] != '') {
+                destinationFileArray.splice(taskQueryStringLocation as number, 0, '');
+                // retaskLocation = (taskQueryStringLocation as number) - 1;
+                retaskLocation = taskQueryStringLocation;
+            }
+        } else {
+            // if marker string is not found AND tasks query string is not found, append to end of file.
+            retaskLocation = destinationFileArray.length;
+        }
+
+        destinationFileArray.splice(retaskLocation as number, 0, task.originalMarkdown);
+
+        return destinationFileArray;
+    }
+
+    private static arraySubArrayFind(full: string[], slice: string[]) {
+        if (slice.length === 0) {
+            return true;
+        }
+
+        const candidateIndexes = full
+                .map((element, fullIndex) => ({
+                    matched: element === slice[0],
+                    fullIndex,
+                }))
+                .filter(({ matched }) => matched),
+            found = candidateIndexes.find(({ fullIndex }) =>
+                slice.every(
+                    (element, sliceIndex) =>
+                        Object.hasOwn(full, fullIndex + sliceIndex) && element === full[fullIndex + sliceIndex],
+                ),
+            );
+
+        // console.log(found);
+        // return Boolean(found);
+        if (found == undefined) {
+            return -1;
+        } else {
+            return found.fullIndex;
+        }
     }
 }
