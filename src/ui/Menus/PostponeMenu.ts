@@ -1,4 +1,3 @@
-import moment from 'moment'; //RETASK: ADDED
 import { MenuItem, Notice } from 'obsidian';
 import type { Moment, unitOfTime } from 'moment/moment';
 import { ReTask } from 'ReTask';

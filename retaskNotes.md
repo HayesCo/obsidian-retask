@@ -1,35 +1,53 @@
-TODO:
+# TODO
 
-- [ ] Get rid of Retask marker just use query string
-  - [ ] For both marker strings they are optional and default to top/bottom if not present
 - [ ] need to figure out how to save hotkeys and move them to testing instances and also app settings. maybe the data file?
+- [ ] is ribbon ordering saved in data file or workspace?
+
+workspace.json segment about ribbon
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "command-palette:Open command palette": false,
+      "templater-obsidian:Templater": false,
+      "obsidian-retasks-plugin:ReTask Today": false,
+      "periodic-notes:Open today": false
+    }
+
+cmd -r reload
+
+{
+  "app:reload": [
+    {
+      "modifiers": [
+        "Mod"
+      ],
+      "key": "R"
+    }
+  ]
+}
+
+## later stuff
+
 - [ ] double check that the un-edited tasks app is slowing down mobile and submit a help support issue or something
 - [ ] explore what function we could add to the right click of the link button in short mode
-- [ ] is ribbon ordering saved in data file or workspace?
 - [ ] can a ribbon action be made to open another vault?
-- preset config options
-  - turn off - set cancelled date on every canceled task
-  - turn on - use file name as scheduled date for undated tasks
-  - turn off - auto suggest task content
+- [ ] main.ts investigate id: 'run-retask-command-complex' and if it's the right command format. do we need complex?
 
-- main.ts investigate id: 'run-retask-command-complex' and if it's the right command format. do we need complex?
-
+## retask button stuff
 
 - [ ] First press of retask button adds tasks query to bottom. If that’s already there, it adds retask today section to the top. If both are there it removes the top section “toggling” it
 - [ ] Right click on retask button gives you options to remove either retask query, task query, or both. Also option to just retask today query. These all have associated commands
 
-acceptance criteria:
-
-- check that currently open page is today.
-  - if not launch notice
-- if currently open file IS TODAY
-  - check for today retask string
-    - if present, remove
-    - if not present, add before retask line.. or should it be after the line after today? or just add at line 7?
+# acceptance criteria
 
 ## Browser
 
 -- need to add command and button functionality test criteria
+-- add ac criteria for retask today section
 
 - if the open document is in the past
   - [ ] pen moves task to today

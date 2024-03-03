@@ -2,9 +2,6 @@ import moment from 'moment'; //RETASK: ADDED
 import type { Task } from 'Task/Task';
 import type { unitOfTime } from 'moment/moment';
 import { getTaskLineAndFile } from 'Obsidian/File';
-
-import { setTimeout } from 'timers/promises';
-
 export class ReTask {
     public static async retask() {
         console.log('Retask.retask ran');
