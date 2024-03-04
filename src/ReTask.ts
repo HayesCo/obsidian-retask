@@ -95,8 +95,7 @@ export class ReTask {
     }
 
     public static async postponeTask(task: Task, amount: number, timeUnit: unitOfTime.DurationConstructor) {
-        console.log(task.originalMarkdown); //TODO REMOVE ME
-        console.log('right clicked arrows selection'); //TODO REMOVE ME
+        console.log('right clicked arrows selection');
 
         // MAKE ARRAY FROM SOURCE FILE and splice the task out of it
         const sourceFileArray = await this.makeSourceFileArray(task.taskLocation.path);
@@ -104,8 +103,7 @@ export class ReTask {
 
         // determine if the currently open file date is in the past/present or in the future
         // if the day is in the past or present, we add duration to current date.
-        // if the day is in the future we use that file's date as the relative date for postpoining
-
+        // if the day is in the future we use that file's date as the relative date for postponing
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
@@ -134,8 +132,7 @@ export class ReTask {
     }
 
     public static async postponeTaskTomorrow(task: Task) {
-        console.log(task.originalMarkdown); //TODO REMOVE ME
-        console.log('left click arrows'); //TODO REMOVE ME
+        console.log('left click arrows');
 
         // MAKE ARRAY FROM SOURCE FILE and splice the task out of it
         const taskSourceFileArray = await this.makeSourceFileArray(task.taskLocation.path);
@@ -146,14 +143,14 @@ export class ReTask {
 
         const openFileDate = new Date(Date.parse(app.workspace.activeEditor?.file?.basename + ' 00:00:00'));
 
-        const arrowsfileInPast = openFileDate < today;
+        const arrowsFileInPast = openFileDate < today;
 
         // set target date to one day after the date of the currently open file
         const targetDate = new Date(openFileDate);
         targetDate.setDate(targetDate.getDate() + 1);
 
-        if (arrowsfileInPast) {
-            // change the target date to tomorrow if the arrows file is in the past because we dont want to assign to a historical date.
+        if (arrowsFileInPast) {
+            // change the target date to tomorrow if the arrows file is in the past because we don't want to assign to a historical date.
             targetDate.setDate(today.getDate() + 1);
         }
 
@@ -231,11 +228,11 @@ export class ReTask {
         const todayYearFolderPathString = this.dateToYearFolderPath(date);
         const todayMonthFolderPathString = this.dateToMonthFolderPath(date);
 
-        // make year folder if it doesnt exist
+        // make year folder if it doesn't exist
         if (!(await app.vault.adapter.exists(todayYearFolderPathString))) {
             await app.vault.adapter.mkdir(todayYearFolderPathString);
         }
-        // make month folder if it doesnt exist
+        // make month folder if it doesn't exist
         if (!(await app.vault.adapter.exists(todayMonthFolderPathString))) {
             await app.vault.adapter.mkdir(todayMonthFolderPathString);
         }
