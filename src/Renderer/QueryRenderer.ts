@@ -1,5 +1,8 @@
 import type { EventRef, MarkdownPostProcessorContext } from 'obsidian';
+
 import { App, Keymap, MarkdownRenderChild, MarkdownRenderer, TFile } from 'obsidian';
+import { ReTask } from '../ReTask';
+
 import { GlobalFilter } from '../Config/GlobalFilter';
 import { GlobalQuery } from '../Config/GlobalQuery';
 import { QueryLayout } from '../Layout/QueryLayout';
@@ -288,9 +291,39 @@ class QueryRenderChild extends MarkdownRenderChild {
         editTaskPencil.title = 'Edit task';
         editTaskPencil.href = '#';
 
-        editTaskPencil.onClickEvent((event: MouseEvent) => {
-            event.preventDefault();
+        editTaskPencil.addEventListener('click', (event: MouseEvent) => {
+            event.preventDefault(); // suppress the default click behavior
+            event.stopPropagation(); // suppress further event propagation
 
+            // editTaskPencil.onClickEvent((event: MouseEvent) => {
+            //     event.preventDefault();
+
+            // Handle Pencil Left click
+            ReTask.promoteTask(task);
+
+            // const onSubmit = async (updatedTasks: Task[]): Promise<void> => {
+            //     await replaceTaskWithTasks({
+            //         originalTask: task,
+            //         newTasks: DateFallback.removeInferredStatusIfNeeded(task, updatedTasks),
+            //     });
+            // };
+
+            // // Need to create a new instance every time, as cursor/task can change.
+            // const taskModal = new TaskModal({
+            //     app: this.app,
+            //     task,
+            //     onSubmit,
+            //     allTasks,
+            // });
+            // taskModal.open(); //RETASK: REMOVE
+        });
+
+        // RETASK add this to keep original edit functionality but now on right click
+        /** Open a context menu on right-click.
+         */
+        editTaskPencil.addEventListener('contextmenu', async (ev: MouseEvent) => {
+            ev.preventDefault(); // suppress the default context menu
+            // ev.stopPropagation(); // suppress further event propagation
             const onSubmit = async (updatedTasks: Task[]): Promise<void> => {
                 await replaceTaskWithTasks({
                     originalTask: task,
@@ -306,6 +339,9 @@ class QueryRenderChild extends MarkdownRenderChild {
                 allTasks,
             });
             taskModal.open();
+
+            console.log(task.originalMarkdown); //TODO REMOVE ME
+            console.log('right click pencil'); //TODO REMOVE ME
         });
     }
 
@@ -376,6 +412,17 @@ class QueryRenderChild extends MarkdownRenderChild {
 
         link.setText(linkText);
 
+        //retask add placeholder for optional future functionaltiy
+        /** Open a context menu on right-click.
+         */
+        // link.addEventListener('contextmenu', async (ev: MouseEvent) => {
+        //     ev.preventDefault(); // suppress the default context menu
+        //     ev.stopPropagation(); // suppress further event propagation
+
+        //     console.log(task.originalMarkdown); //TODO REMOVE ME
+        //     console.log('right click tasks backlink'); //TODO REMOVE ME
+        // });
+
         // Go to the line the task is defined at
         const vault = this.app.vault;
         link.addEventListener('click', async (ev: MouseEvent) => {
@@ -429,7 +476,12 @@ class QueryRenderChild extends MarkdownRenderChild {
         button.addEventListener('click', (ev: MouseEvent) => {
             ev.preventDefault(); // suppress the default click behavior
             ev.stopPropagation(); // suppress further event propagation
-            PostponeMenu.postponeOnClickCallback(button, task, amount, timeUnit);
+
+            // RETASK: ADD
+            // RETASK: This function acts when the arrows are left clicked.
+            ReTask.postponeTaskTomorrow(task);
+
+            // PostponeMenu.postponeOnClickCallback(button, task, amount, timeUnit); //RETASK: remove
         });
 
         /** Open a context menu on right-click.
